@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TENGE OS — POCO X6 Pro Firmware Hub</title>
+  <meta name="description" content="Минималистичный репозиторий прошивок TengeOS для POCO X6 Pro 5G. Чейнджлоги, версии HyperOS, скриншоты и прямые загрузки.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="dark-theme">
+  <!-- Interactive Canvas Background with Floating Particles & Mouse Connection -->
+  <canvas id="bg-canvas" class="bg-canvas"></canvas>
+  <div class="bg-glow"></div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="header-container">
+      <a href="#" class="brand-logo" id="brand-logo">
+        <span class="logo-symbol">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </span>
+        <span class="logo-text">TENGE<strong>OS</strong></span>
+      </a>
+
+      <nav class="header-nav">
+        <div class="search-box">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="global-search" placeholder="Поиск прошивок, версий..." autocomplete="off">
+          <kbd class="search-shortcut">⌘K</kbd>
+        </div>
+
+        <div class="theme-toggle-wrap">
+          <button id="theme-toggle" class="theme-btn" title="Переключить тему" aria-label="Toggle Theme">
+            <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="main-container" id="app">
+    <!-- View 1: Device Selection Page (Only POCO X6 Pro 5G) -->
+    <section id="devices-view" class="view-section active">
+      <div class="hero-section">
+        <div class="hero-badge">
+          <span class="pulse-dot"></span>
+          <span>Официальный репозиторий TengeOS</span>
+        </div>
+        <h1 class="hero-title">TengeOS Firmware Hub</h1>
+        <p class="hero-subtitle">
+          Сборки TengeOS на базе HyperOS с расширенными возможностями, высокой стабильностью и полной локализацией.
+        </p>
+      </div>
+
+      <div class="devices-grid" id="devices-container" style="max-width: 650px; margin: 0 auto 3rem;">
+        <!-- Injected via JavaScript from data.js -->
+      </div>
+
+      <div class="features-row">
+        <div class="feature-item">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-text">
+            <h3>Оптимизация производительности</h3>
+            <p>Улучшенный троттлинг, разблокированные 90/120 FPS и чистый порт без лишнего мусора.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔒</div>
+          <div class="feature-text">
+            <h3>Контрольные суммы SHA-256</h3>
+            <p>100% гарантия целостности файлов архивов перед установкой.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 2: Device Firmware Page -->
+    <section id="firmwares-view" class="view-section">
+      <!-- Breadcrumb & Back action -->
+      <div class="nav-breadcrumbs">
+        <button id="back-to-devices-btn" class="back-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>К выбору устройства</span>
+        </button>
+        <span class="crumb-separator">/</span>
+        <span id="crumb-device-name" class="crumb-current">POCO X6 Pro 5G</span>
+      </div>
+
+      <!-- Device Hero Header Card -->
+      <div class="device-hero-card" id="device-hero-banner">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Firmware Filter & Count Bar -->
+      <div class="firmware-toolbar">
+        <div class="filter-tabs" id="firmware-filter-tabs">
+          <button class="filter-tab active" data-filter="all">Все сборки TengeOS (<span id="count-all">0</span>)</button>
+          <button class="filter-tab" data-filter="HyperOS 4">HyperOS 4</button>
+        </div>
+        <div class="firmware-info-note">
+          <span class="info-icon">ℹ️</span>
+          <span>Рекомендуется чистая установка с форматированием данных</span>
+        </div>
+      </div>
+
+      <!-- Firmwares List Container -->
+      <div class="firmware-list" id="firmware-list-container">
+        <!-- Injected via JS -->
+      </div>
+    </section>
+  </main>
+
+  <!-- Screenshot Lightbox Modal (Clean without captions) -->
+  <div id="lightbox-modal" class="modal-backdrop" aria-hidden="true">
+    <div class="lightbox-content">
+      <button id="lightbox-close" class="modal-close-btn" aria-label="Закрыть">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <div class="lightbox-image-wrap">
+        <img id="lightbox-img" src="" alt="Скриншот TengeOS">
+      </div>
+      <div class="lightbox-footer" style="justify-content: flex-end;">
+        <div class="lightbox-nav-buttons">
+          <button id="lightbox-prev" class="lightbox-nav-btn" aria-label="Предыдущий">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <span id="lightbox-counter">1 / 4</span>
+          <button id="lightbox-next" class="lightbox-nav-btn" aria-label="Следующий">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Installation Modal -->
+  <div id="install-modal" class="modal-backdrop" aria-hidden="true">
+    <div class="install-modal-content">
+      <div class="modal-header">
+        <div>
+          <h3 id="install-modal-title">Инструкция по установке</h3>
+          <p id="install-modal-subtitle" class="modal-subtitle">Пошаговое руководство</p>
+        </div>
+        <button id="install-modal-close" class="modal-close-btn" aria-label="Закрыть">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="install-modal-steps">
+        <!-- Dynamic steps list -->
+      </div>
+      <div class="modal-footer">
+        <button id="install-modal-ok" class="btn btn-primary">Понятно, всё готово</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-container">
+      <div class="footer-left">
+        <p class="footer-title">TENGE OS — Custom Project</p>
+        <p class="footer-desc">Разработано @wectazz. Все прошивки протестированы на стабильность работы в реальных условиях.</p>
+      </div>
+      <div class="footer-links">
+        <a href="#device/poco-x6-pro" class="footer-link">Прошивки</a>
+        <a href="https://t.me" target="_blank" rel="noopener" class="footer-link">Telegram Канал</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
