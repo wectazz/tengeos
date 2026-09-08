@@ -9,8 +9,8 @@
   --bg-card: #181b24;
   --bg-card-hover: #1e222f;
   --bg-glass: rgba(24, 27, 36, 0.7);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.2);
+  --border-color: rgba(255, 255, 255, 0.18);
+  --border-hover: rgba(255, 255, 255, 0.4);
   
   --text-primary: #f3f4f6;
   --text-secondary: #9ca3af;
@@ -43,8 +43,8 @@ body.light-theme {
   --bg-card: #ffffff;
   --bg-card-hover: #f8fafc;
   --bg-glass: rgba(255, 255, 255, 0.8);
-  --border-color: rgba(0, 0, 0, 0.08);
-  --border-hover: rgba(0, 0, 0, 0.2);
+  --border-color: rgba(0, 0, 0, 0.16);
+  --border-hover: rgba(0, 0, 0, 0.35);
   
   --text-primary: #0f172a;
   --text-secondary: #475569;
@@ -241,6 +241,31 @@ body {
   background: var(--bg-card-hover);
   color: var(--text-primary);
   border-color: var(--border-hover);
+}
+
+.lang-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0 0.8rem;
+  height: 38px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.lang-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 12px var(--accent-glow);
 }
 
 body.dark-theme .sun-icon { display: block; }

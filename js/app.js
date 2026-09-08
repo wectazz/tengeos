@@ -1,9 +1,182 @@
 /**
- * TENGE OS - App Logic & SPA Router
- * Handles device view, firmware rendering, color-coded tabs, lightbox (without captions), interactive canvas particle background, and hash routing.
+ * TENGE OS - App Logic & SPA Router with Full i18n (Russian & English)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // --- i18n Translations Dictionary ---
+  const TRANSLATIONS = {
+    ru: {
+      search_placeholder: "Поиск прошивок...",
+      hero_badge_text: "Официальный репозиторий TengeOS",
+      hero_title: "TengeOS Firmware Hub",
+      hero_subtitle: "Сборки TengeOS на базе HyperOS с расширенными возможностями, высокой стабильностью и полной локализацией.",
+      feature_perf_title: "Оптимизация производительности",
+      feature_perf_desc: "Улучшенный троттлинг, разблокированные 90/120 FPS и чистый порт без лишнего мусора.",
+      feature_security_title: "Контрольные суммы SHA-256",
+      feature_security_desc: "100% гарантия целостности файлов архивов перед установкой.",
+      back_to_devices: "К выбору устройства",
+      all_builds: "Все сборки TengeOS",
+      warning_note: "Рекомендуется чистая установка с форматированием данных",
+      install_guide: "Инструкция по установке",
+      step_by_step: "Пошаговое руководство",
+      modal_ok_btn: "Понятно, всё готово",
+      footer_title: "TENGE OS — Custom Project",
+      footer_desc: "Разработано @wectazz. Все прошивки протестированы на стабильность работы в реальных условиях.",
+      footer_link_telegram: "Telegram Канал",
+      toast_copied: "SHA-256 хэш скопирован в буфер обмена!",
+      toast_theme_dark: "Тема изменена на темную",
+      toast_theme_light: "Тема изменена на светлую",
+      toast_lang: "Язык переключен на русский",
+      changelog_tab: "📝 Чейнджлог",
+      notes_tab: "💡 Примечания (Notes)",
+      bugs_tab: "⚠️ Известные баги (Bugs)",
+      screenshots_title: "Скриншоты интерфейса:",
+      specs_soc: "Процессор",
+      specs_screen: "Дисплей",
+      specs_ram: "Память",
+      specs_battery: "Батарея",
+      btn_open_firmwares: "Открыть прошивки",
+      firmware_count_text: "сборка TengeOS",
+      android_os: "Android OS",
+      security_patch: "Патч безопасности",
+      release_date: "Дата релиза",
+      maintainer: "Мейнтейнер",
+      size: "Размер",
+      features_highlight: "Особенности сборки:",
+      no_notes: "Нет особых примечаний",
+      no_bugs: "Критических багов не обнаружено",
+      install_guide_title: "Инструкция по установке"
+    },
+    en: {
+      search_placeholder: "Search firmwares...",
+      hero_badge_text: "Official TengeOS Repository",
+      hero_title: "TengeOS Firmware Hub",
+      hero_subtitle: "Custom TengeOS builds based on HyperOS with enhanced features, high stability and full localization.",
+      feature_perf_title: "Performance Optimization",
+      feature_perf_desc: "Improved thermal throttling, unlocked 90/120 FPS and clean debloated port.",
+      feature_security_title: "SHA-256 Checksums",
+      feature_security_desc: "100% integrity guarantee of archive files before installation.",
+      back_to_devices: "Back to Devices",
+      all_builds: "All TengeOS Builds",
+      warning_note: "Clean flash with data formatting is recommended",
+      install_guide: "Installation Guide",
+      step_by_step: "Step-by-step tutorial",
+      modal_ok_btn: "Got it, all set",
+      footer_title: "TENGE OS — Custom Project",
+      footer_desc: "Developed by @wectazz. All firmwares are thoroughly tested for daily driver stability.",
+      footer_link_telegram: "Telegram Channel",
+      toast_copied: "SHA-256 hash copied to clipboard!",
+      toast_theme_dark: "Theme changed to dark",
+      toast_theme_light: "Theme changed to light",
+      toast_lang: "Language switched to English",
+      changelog_tab: "📝 Changelog",
+      notes_tab: "💡 Notes & Tips",
+      bugs_tab: "⚠️ Known Bugs",
+      screenshots_title: "Interface Screenshots:",
+      specs_soc: "Processor",
+      specs_screen: "Display",
+      specs_ram: "Memory",
+      specs_battery: "Battery",
+      btn_open_firmwares: "Open Firmwares",
+      firmware_count_text: "TengeOS build",
+      android_os: "Android OS",
+      security_patch: "Security Patch",
+      release_date: "Release Date",
+      maintainer: "Maintainer",
+      size: "File Size",
+      features_highlight: "Build Highlights:",
+      no_notes: "No special notes",
+      no_bugs: "No critical bugs found",
+      install_guide_title: "Installation Guide"
+    }
+  };
+
+  // Language auto-detection & initialization
+  let currentLang = localStorage.getItem('tenge_lang');
+  if (!currentLang) {
+    const sysLang = navigator.language || navigator.userLanguage || 'ru';
+    currentLang = sysLang.startsWith('ru') ? 'ru' : 'en';
+  }
+
+  // DOM Elements
+  const devicesView = document.getElementById('devices-view');
+  const firmwaresView = document.getElementById('firmwares-view');
+  const devicesContainer = document.getElementById('devices-container');
+  const firmwareListContainer = document.getElementById('firmware-list-container');
+  const deviceHeroBanner = document.getElementById('device-hero-banner');
+  const crumbDeviceName = document.getElementById('crumb-device-name');
+  const backToDevicesBtn = document.getElementById('back-to-devices-btn');
+  const globalSearchInput = document.getElementById('global-search');
+  const themeToggleBtn = document.getElementById('theme-toggle');
+  const langToggleBtn = document.getElementById('lang-toggle');
+  const countAll = document.getElementById('count-all');
+  const filterTabsContainer = document.getElementById('firmware-filter-tabs');
+
+  // Lightbox Modal Elements
+  const lightboxModal = document.getElementById('lightbox-modal');
+  const lightboxImg = document.getElementById('lightbox-img');
+  const lightboxClose = document.getElementById('lightbox-close');
+  const lightboxPrev = document.getElementById('lightbox-prev');
+  const lightboxNext = document.getElementById('lightbox-next');
+  const lightboxCounter = document.getElementById('lightbox-counter');
+
+  // Installation Modal Elements
+  const installModal = document.getElementById('install-modal');
+  const installModalTitle = document.getElementById('install-modal-title');
+  const installModalSubtitle = document.getElementById('install-modal-subtitle');
+  const installModalSteps = document.getElementById('install-modal-steps');
+  const installModalClose = document.getElementById('install-modal-close');
+  const installModalOk = document.getElementById('install-modal-ok');
+
+  // State
+  let currentDeviceId = null;
+  let currentFilter = 'all';
+  let activeLightboxScreenshots = [];
+  let currentScreenshotIndex = 0;
+
+  // Apply Language to Static Elements
+  function updateLanguageUI() {
+    if (langToggleBtn) {
+      langToggleBtn.textContent = currentLang.toUpperCase();
+    }
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (TRANSLATIONS[currentLang][key]) {
+        el.textContent = TRANSLATIONS[currentLang][key];
+      }
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      if (TRANSLATIONS[currentLang][key]) {
+        el.placeholder = TRANSLATIONS[currentLang][key];
+      }
+    });
+  }
+
+  langToggleBtn.addEventListener('click', () => {
+    currentLang = currentLang === 'ru' ? 'en' : 'ru';
+    localStorage.setItem('tenge_lang', currentLang);
+    updateLanguageUI();
+    showToast(TRANSLATIONS[currentLang].toast_lang, 'info');
+    if (currentDeviceId) {
+      renderFirmwares(currentDeviceId);
+    } else {
+      renderDevices();
+    }
+  });
+
+  // Theme Initialization
+  const savedTheme = localStorage.getItem('tenge_theme') || 'dark-theme';
+  document.body.className = savedTheme;
+
+  themeToggleBtn.addEventListener('click', () => {
+    const isDark = document.body.classList.contains('dark-theme');
+    const newTheme = isDark ? 'light-theme' : 'dark-theme';
+    document.body.className = newTheme;
+    localStorage.setItem('tenge_theme', newTheme);
+    showToast(isDark ? TRANSLATIONS[currentLang].toast_theme_light : TRANSLATIONS[currentLang].toast_theme_dark, 'info');
+  });
+
   // --- Interactive Canvas Background with Floating Particles & Mouse Connection ---
   const canvas = document.getElementById('bg-canvas');
   if (canvas) {
@@ -16,11 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
       height = canvas.height = window.innerHeight;
     });
 
-    const mouse = {
-      x: null,
-      y: null,
-      radius: 120
-    };
+    const mouse = { x: null, y: null, radius: 120 };
 
     window.addEventListener('mousemove', (e) => {
       mouse.x = e.clientX;
@@ -47,7 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function animateParticles() {
       ctx.clearRect(0, 0, width, height);
-
       const isLight = document.body.classList.contains('light-theme');
       const dotColor = isLight ? 'rgba(37, 99, 235, 0.4)' : 'rgba(59, 130, 246, 0.5)';
       const lineColor = isLight ? 'rgba(37, 99, 235, ' : 'rgba(59, 130, 246, ';
@@ -59,13 +227,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (p.x < 0 || p.x > width) p.vx *= -1;
         if (p.y < 0 || p.y > height) p.vy *= -1;
 
-        // Draw dot
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fillStyle = dotColor;
         ctx.fill();
 
-        // Connect particles close to each other
         for (let j = index + 1; j < particles.length; j++) {
           const p2 = particles[j];
           const dx = p.x - p2.x;
@@ -82,7 +248,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
 
-        // Connect to mouse cursor
         if (mouse.x !== null && mouse.y !== null) {
           const mdx = p.x - mouse.x;
           const mdy = p.y - mouse.y;
@@ -96,7 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.lineWidth = 0.8;
             ctx.stroke();
 
-            // Gentle push away from cursor
             const angle = Math.atan2(mdy, mdx);
             p.x += Math.cos(angle) * 0.5;
             p.y += Math.sin(angle) * 0.5;
@@ -110,56 +274,10 @@ document.addEventListener('DOMContentLoaded', () => {
     animateParticles();
   }
 
-  // --- App DOM Elements & Router ---
-  const devicesView = document.getElementById('devices-view');
-  const firmwaresView = document.getElementById('firmwares-view');
-  const devicesContainer = document.getElementById('devices-container');
-  const firmwareListContainer = document.getElementById('firmware-list-container');
-  const deviceHeroBanner = document.getElementById('device-hero-banner');
-  const crumbDeviceName = document.getElementById('crumb-device-name');
-  const backToDevicesBtn = document.getElementById('back-to-devices-btn');
-  const globalSearchInput = document.getElementById('global-search');
-  const themeToggleBtn = document.getElementById('theme-toggle');
-  const countAll = document.getElementById('count-all');
-  const filterTabsContainer = document.getElementById('firmware-filter-tabs');
-
-  // Lightbox Modal Elements
-  const lightboxModal = document.getElementById('lightbox-modal');
-  const lightboxImg = document.getElementById('lightbox-img');
-  const lightboxClose = document.getElementById('lightbox-close');
-  const lightboxPrev = document.getElementById('lightbox-prev');
-  const lightboxNext = document.getElementById('lightbox-next');
-  const lightboxCounter = document.getElementById('lightbox-counter');
-
-  // Installation Modal Elements
-  const installModal = document.getElementById('install-modal');
-  const installModalTitle = document.getElementById('install-modal-title');
-  const installModalSubtitle = document.getElementById('install-modal-subtitle');
-  const installModalSteps = document.getElementById('install-modal-steps');
-  const installModalClose = document.getElementById('install-modal-close');
-  const installModalOk = document.getElementById('install-modal-ok');
-
-  // State
-  let currentDeviceId = null;
-  let currentFilter = 'all';
-  let activeLightboxScreenshots = [];
-  let currentScreenshotIndex = 0;
-
-  // Theme Initialization
-  const savedTheme = localStorage.getItem('tenge_theme') || 'dark-theme';
-  document.body.className = savedTheme;
-
-  themeToggleBtn.addEventListener('click', () => {
-    const isDark = document.body.classList.contains('dark-theme');
-    const newTheme = isDark ? 'light-theme' : 'dark-theme';
-    document.body.className = newTheme;
-    localStorage.setItem('tenge_theme', newTheme);
-    showToast(`Тема изменена на ${isDark ? 'светлую' : 'темную'}`, 'info');
-  });
-
-  // Render Devices Grid (Page 1) - Only POCO X6 Pro 5G with banner.png
+  // Render Devices Grid (Page 1)
   function renderDevices() {
     devicesContainer.innerHTML = '';
+    const t = TRANSLATIONS[currentLang];
     
     Object.values(DEVICES_DATA).forEach(device => {
       const card = document.createElement('div');
@@ -174,33 +292,33 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="device-content">
           <div class="device-title-row">
             <h2 class="device-name">${device.name}</h2>
-            <span class="device-status">${device.status}</span>
+            <span class="device-status">${device.status[currentLang]}</span>
           </div>
-          <p class="device-tagline">${device.tagline}</p>
+          <p class="device-tagline">${device.tagline[currentLang]}</p>
           
           <div class="specs-mini-list">
             <div class="spec-item">
-              <span class="spec-label">Процессор</span>
+              <span class="spec-label">${t.specs_soc}</span>
               <span class="spec-value">${device.specs.soc.split(' ')[0]} ${device.specs.soc.split(' ')[1]}</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Дисплей</span>
+              <span class="spec-label">${t.specs_screen}</span>
               <span class="spec-value">${device.specs.screen.split(' ')[1]}</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Память</span>
+              <span class="spec-label">${t.specs_ram}</span>
               <span class="spec-value">${device.specs.ram}</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Батарея</span>
+              <span class="spec-label">${t.specs_battery}</span>
               <span class="spec-value">${device.specs.battery}</span>
             </div>
           </div>
 
           <div class="device-footer">
-            <span class="firmware-count">${device.firmwares.length} сборка TengeOS</span>
+            <span class="firmware-count">${device.firmwares.length} ${t.firmware_count_text}</span>
             <span class="btn-arrow">
-              Открыть прошивки
+              ${t.btn_open_firmwares}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
             </span>
           </div>
@@ -225,19 +343,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     currentDeviceId = deviceId;
     crumbDeviceName.textContent = device.name;
+    const t = TRANSLATIONS[currentLang];
 
     // Render Hero Banner
     deviceHeroBanner.innerHTML = `
       <div class="banner-left">
         <h2>${device.name}</h2>
-        <p>${device.tagline}</p>
+        <p>${device.tagline[currentLang]}</p>
         <div class="banner-specs-badges">
           <span class="spec-badge">Codename: ${device.codename}</span>
           <span class="spec-badge">${device.specs.soc}</span>
           <span class="spec-badge">${device.specs.battery}</span>
         </div>
       </div>
-      <div class="banner-right" id="clickable-banner" title="Кликните для просмотра баннера" style="cursor: pointer;">
+      <div class="banner-right" id="clickable-banner" title="Banner preview" style="cursor: pointer;">
         <img src="${device.image}" alt="${device.name} Banner">
       </div>
     `;
@@ -257,7 +376,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filter & count
     let firmwares = device.firmwares;
-    countAll.textContent = firmwares.length;
+    if (countAll) {
+      countAll.textContent = firmwares.length;
+    }
 
     if (currentFilter !== 'all') {
       firmwares = firmwares.filter(f => f.category.toLowerCase().includes(currentFilter.toLowerCase()));
@@ -268,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (firmwares.length === 0) {
       firmwareListContainer.innerHTML = `
         <div style="text-align: center; padding: 4rem; color: var(--text-secondary);">
-          <p>В данной категории пока нет доступных прошивок.</p>
+          <p>No firmwares found in this category.</p>
         </div>
       `;
       return;
@@ -278,23 +399,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = 'firmware-card';
 
-      // Screenshots HTML
       const screenshotsHtml = fw.screenshots.map((shot, idx) => `
-        <div class="screenshot-thumb" data-fw-id="${fw.id}" data-index="${idx}" title="Скриншот ${idx + 1}">
-          <img src="${shot.url}" alt="Скриншот ${idx + 1}" loading="lazy">
+        <div class="screenshot-thumb" data-fw-id="${fw.id}" data-index="${idx}" title="Screenshot ${idx + 1}">
+          <img src="${shot.url}" alt="Screenshot ${idx + 1}" loading="lazy">
         </div>
       `).join('');
 
-      // Changelog, Notes, Bugs list items
-      const changelogHtml = fw.changelog.map(item => `<li>${item}</li>`).join('');
-      const notesHtml = fw.notes && fw.notes.length > 0 ? fw.notes.map(n => `<li>${n}</li>`).join('') : '<li>Нет особых примечаний</li>';
-      const bugsHtml = fw.bugs && fw.bugs.length > 0 ? fw.bugs.map(b => `<li>${b}</li>`).join('') : '<li>Критических багов не обнаружено</li>';
+      const changelogHtml = fw.changelog[currentLang].map(item => `<li>${item}</li>`).join('');
+      const notesList = fw.notes[currentLang];
+      const notesHtml = notesList && notesList.length > 0 ? notesList.map(n => `<li>${n}</li>`).join('') : `<li>${t.no_notes}</li>`;
+      
+      const bugsList = fw.bugs[currentLang];
+      const bugsHtml = bugsList && bugsList.length > 0 ? bugsList.map(b => `<li>${b}</li>`).join('') : `<li>${t.no_bugs}</li>`;
 
-      // Downloads HTML
       const downloadsHtml = fw.downloads.map(dl => `
         <a href="${dl.url}" target="_blank" rel="noopener" class="btn ${dl.primary ? 'btn-primary' : 'btn-secondary'} download-trigger" data-name="${dl.name}">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          ${dl.name} <span style="font-size: 0.75rem; color: var(--text-muted);">(${dl.size})</span>
+          ${dl.name}
         </a>
       `).join('');
 
@@ -310,47 +431,46 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <button class="btn btn-primary install-guide-btn" data-fw-id="${fw.id}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 12 12 12 8"></polyline><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-            Инструкция установки
+            ${t.install_guide}
           </button>
         </div>
 
         <div class="firmware-meta-grid">
           <div class="meta-item">
-            <span class="meta-label">Android OS</span>
+            <span class="meta-label">${t.android_os}</span>
             <span class="meta-val">${fw.androidVersion}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Патч безопасности</span>
+            <span class="meta-label">${t.security_patch}</span>
             <span class="meta-val">${fw.securityPatch}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Дата релиза</span>
-            <span class="meta-val">${fw.buildDate}</span>
+            <span class="meta-label">${t.release_date}</span>
+            <span class="meta-val">${fw.buildDate[currentLang]}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Мейнтейнер</span>
+            <span class="meta-label">${t.maintainer}</span>
             <span class="meta-val">${fw.maintainer}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Размер</span>
+            <span class="meta-label">${t.size}</span>
             <span class="meta-val">${fw.fileSize}</span>
           </div>
-          <div class="meta-item" style="cursor: pointer;" title="Кликните, чтобы скопировать SHA-256" id="copy-hash-${fw.id}">
+          <div class="meta-item" style="cursor: pointer;" title="Copy SHA-256" id="copy-hash-${fw.id}">
             <span class="meta-label">SHA-256 Checksum 📋</span>
             <span class="meta-val mono" style="color: var(--accent);">${fw.sha256.substring(0, 12)}...</span>
           </div>
         </div>
 
         <div class="firmware-highlight">
-          <strong>Особенности сборки:</strong> ${fw.highlight}
+          <strong>${t.features_highlight}</strong> ${fw.highlight[currentLang]}
         </div>
 
-        <!-- Color-coded Tabbed Information Section (Changelog, Notes, Bugs) -->
         <div class="info-tabs-container" style="margin-bottom: 1.5rem;">
           <div class="info-tabs-header" style="display: flex; gap: 0.75rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
-            <button class="info-tab-btn active" data-tab="changelog-${fw.id}" data-color="accent">📝 Чейнджлог</button>
-            <button class="info-tab-btn" data-tab="notes-${fw.id}" data-color="warning">💡 Примечания (Notes)</button>
-            <button class="info-tab-btn" data-tab="bugs-${fw.id}" data-color="danger">⚠️ Известные баги (Bugs)</button>
+            <button class="info-tab-btn active" data-tab="changelog-${fw.id}" data-color="accent">${t.changelog_tab}</button>
+            <button class="info-tab-btn" data-tab="notes-${fw.id}" data-color="warning">${t.notes_tab}</button>
+            <button class="info-tab-btn" data-tab="bugs-${fw.id}" data-color="danger">${t.bugs_tab}</button>
           </div>
 
           <div class="info-tab-content active" id="changelog-${fw.id}">
@@ -372,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ${fw.screenshots && fw.screenshots.length > 0 ? `
           <div class="screenshots-section">
-            <div class="screenshots-title">Скриншоты интерфейса:</div>
+            <div class="screenshots-title">${t.screenshots_title}</div>
             <div class="screenshots-grid">
               ${screenshotsHtml}
             </div>
@@ -416,8 +536,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      applyTabStyles(card.querySelector('.info-tab-btn.active'));
-
       tabBtns.forEach(btn => {
         btn.style.background = 'var(--bg-secondary)';
         btn.style.border = '1px solid var(--border-color)';
@@ -431,7 +549,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         btn.addEventListener('click', () => {
           const targetTabId = btn.getAttribute('data-tab');
-          
           tabBtns.forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           applyTabStyles(btn);
@@ -454,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (copyEl) {
         copyEl.addEventListener('click', () => {
           navigator.clipboard.writeText(fw.sha256);
-          showToast('SHA-256 хэш скопирован в буфер обмена!', 'success');
+          showToast(t.toast_copied, 'success');
         });
       }
 
@@ -483,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
       dlBtns.forEach(dlBtn => {
         dlBtn.addEventListener('click', () => {
           const dlName = dlBtn.getAttribute('data-name');
-          showToast(`Переход к загрузке: ${dlName}`, 'success');
+          showToast(`Redirecting to download: ${dlName}`, 'success');
         });
       });
 
@@ -541,7 +658,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.location.hash = '#devices';
   });
 
-  // Lightbox functions (without titles/captions)
+  // Lightbox functions
   function openLightbox() {
     if (!activeLightboxScreenshots.length) return;
     updateLightboxImage();
@@ -575,14 +692,15 @@ document.addEventListener('DOMContentLoaded', () => {
     updateLightboxImage();
   });
 
-  // Installation Modal functions with formatted Fastboot & Recovery sections
+  // Installation Modal functions
   function openInstallModal(fw) {
-    installModalTitle.textContent = `Инструкция по установке: ${fw.name}`;
-    installModalSubtitle.textContent = `Тип: ${fw.type} • Версия ${fw.version}`;
+    const t = TRANSLATIONS[currentLang];
+    installModalTitle.textContent = `${t.install_guide}: ${fw.name}`;
+    installModalSubtitle.textContent = `Type: ${fw.type} • Version ${fw.version}`;
     
     installModalSteps.innerHTML = '';
     
-    const htmlContent = `
+    const htmlContent = currentLang === 'ru' ? `
       <div style="display: flex; flex-direction: column; gap: 1.5rem;">
         <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.2rem;">
           <h4 style="color: var(--accent); margin-bottom: 0.75rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
@@ -608,6 +726,35 @@ document.addEventListener('DOMContentLoaded', () => {
             <li>После завершения прошивки перезагрузите устройство обратно в рекавери (Reboot to Recovery).</li>
             <li>Произведите сброс данных (Wipe Data / Format Data).</li>
             <li>Перезагрузите устройство в систему (Reboot to System).</li>
+          </ol>
+        </div>
+      </div>
+    ` : `
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.2rem;">
+          <h4 style="color: var(--accent); margin-bottom: 0.75rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            ⚡ FASTBOOT Installation:
+          </h4>
+          <ol style="padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.875rem; color: var(--text-primary);">
+            <li>Extract the downloaded archive on your PC.</li>
+            <li>Ensure your phone is connected to PC and in Fastboot mode (bootloader).</li>
+            <li>Navigate to the ROM folder.</li>
+            <li>Launch <code>.bat</code> (Windows) or <code>.sh</code> (Linux/macOS) script (clean or dirty flash).</li>
+            <li>Wait until it finishes and the device restarts automatically.</li>
+            <li>Install your preferred root manager if needed (non-fenrir).</li>
+          </ol>
+        </div>
+
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.2rem;">
+          <h4 style="color: var(--success); margin-bottom: 0.75rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            🔄 RECOVERY Installation:
+          </h4>
+          <ol style="padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.875rem; color: var(--text-primary);">
+            <li>Reboot to custom recovery (e.g. OrangeFox).</li>
+            <li>Swipe to flash ROM archive.</li>
+            <li>Reboot back to recovery.</li>
+            <li>Wipe / Format data.</li>
+            <li>Reboot to system.</li>
           </ol>
         </div>
       </div>
@@ -672,5 +819,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   window.addEventListener('hashchange', handleRoute);
+  
+  // Initial startup
+  updateLanguageUI();
   handleRoute();
 });
