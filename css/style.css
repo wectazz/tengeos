@@ -78,7 +78,6 @@ body {
   overflow-x: hidden;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  scroll-behavior: smooth;
 }
 
 /* Custom Smooth Scrollbar */
@@ -156,18 +155,6 @@ body {
   letter-spacing: -0.02em;
 }
 
-.logo-symbol {
-  width: 34px;
-  height: 34px;
-  background: var(--accent);
-  color: #fff;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px var(--accent-glow);
-}
-
 .logo-text strong {
   color: var(--accent);
   margin-left: 2px;
@@ -221,6 +208,12 @@ body {
   color: var(--text-muted);
   padding: 0.15rem 0.35rem;
   border-radius: 4px;
+}
+
+.theme-toggle-wrap {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .theme-btn {
@@ -354,6 +347,12 @@ body.light-theme .moon-icon { display: block; }
   grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
   gap: 2rem;
   margin-bottom: 4rem;
+}
+
+.devices-grid-centered {
+  max-width: 650px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .device-card {
@@ -638,6 +637,8 @@ body.light-theme .moon-icon { display: block; }
   transition: transform 0.3s ease;
 }
 
+#clickable-banner { cursor: pointer; }
+
 .banner-right:hover img {
   transform: scale(1.03);
 }
@@ -776,6 +777,9 @@ body.light-theme .moon-icon { display: block; }
   font-size: 0.78rem;
 }
 
+.meta-hash { cursor: pointer; }
+.meta-hash .meta-val { color: var(--accent); }
+
 .firmware-highlight {
   font-size: 0.925rem;
   color: var(--text-primary);
@@ -784,6 +788,49 @@ body.light-theme .moon-icon { display: block; }
   padding: 0.75rem 1rem;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   margin-bottom: 1.5rem;
+}
+
+/* Info Tabs (changelog / notes / bugs) */
+.info-tabs-header {
+  display: flex;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.info-tab-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--radius-full);
+  font-size: 0.825rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.info-tab-btn.is-active-accent {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.info-tab-btn.is-active-warning {
+  background: #f59e0b;
+  color: #fff;
+  border-color: #f59e0b;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.info-tab-btn.is-active-danger {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 /* Changelog Accordion */
@@ -1071,6 +1118,40 @@ body.light-theme .moon-icon { display: block; }
   justify-content: flex-end;
 }
 
+/* Install Guide Blocks */
+.install-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.install-block {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.2rem;
+}
+
+.install-block h4 {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.install-block-fastboot h4 { color: var(--accent); }
+.install-block-recovery h4 { color: var(--success); }
+
+.install-steps {
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
 /* Toast Notifications */
 .toast-container {
   position: fixed;
@@ -1099,9 +1180,15 @@ body.light-theme .moon-icon { display: block; }
 .toast.success { border-left: 4px solid var(--success); }
 .toast.info { border-left: 4px solid var(--accent); }
 
+.toast.is-hiding {
+  opacity: 0;
+  transform: translateY(15px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
 @keyframes toastIn {
-  from { opacity: 0; transform: translateY(20px); scale: 0.95; }
-  to { opacity: 1; transform: translateY(0); scale: 1; }
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* Footer */
@@ -1161,7 +1248,7 @@ body.light-theme .moon-icon { display: block; }
   .search-box { width: 180px; }
   .search-box:focus-within { width: 220px; }
   .main-container { padding: 1.5rem 1rem 3rem; }
-  .device-hero-banner { flex-direction: column; align-items: flex-start; }
+  .device-hero-card { flex-direction: column; align-items: flex-start; }
   .banner-right img { width: 100%; height: 140px; }
   .firmware-meta-grid { grid-template-columns: 1fr; }
   .lightbox-content { width: 98%; padding: 1rem; }

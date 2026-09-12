@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233b82f6'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='16' font-weight='bold' fill='white' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E">
+  <meta name="theme-color" content="#0a0b0e">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="dark-theme">
@@ -18,7 +20,7 @@
   <!-- Header -->
   <header class="site-header">
     <div class="header-container">
-      <a href="#" class="brand-logo" id="brand-logo">
+      <a href="#devices" class="brand-logo" id="brand-logo">
         <span class="logo-text">TENGE<strong>OS</strong></span>
       </a>
 
@@ -29,10 +31,10 @@
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
           <input type="text" id="global-search" placeholder="Поиск прошивок..." data-i18n-placeholder="search_placeholder" autocomplete="off">
-          <kbd class="search-shortcut">⌘K</kbd>
+          <kbd class="search-shortcut" id="search-shortcut-hint">⌘K</kbd>
         </div>
 
-        <div class="theme-toggle-wrap" style="display: flex; gap: 0.5rem; align-items: center;">
+        <div class="theme-toggle-wrap">
           <button id="lang-toggle" class="lang-btn" title="Toggle Language" aria-label="Switch Language">
             EN
           </button>
@@ -72,7 +74,7 @@
         </p>
       </div>
 
-      <div class="devices-grid" id="devices-container" style="max-width: 650px; margin: 0 auto 3rem;">
+      <div class="devices-grid devices-grid-centered" id="devices-container">
         <!-- Injected via JavaScript from data.js -->
       </div>
 
@@ -134,7 +136,7 @@
   </main>
 
   <!-- Screenshot Lightbox Modal (Clean without captions) -->
-  <div id="lightbox-modal" class="modal-backdrop" aria-hidden="true">
+  <div id="lightbox-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Просмотр скриншотов" aria-hidden="true">
     <div class="lightbox-content">
       <button id="lightbox-close" class="modal-close-btn" aria-label="Закрыть">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -143,9 +145,9 @@
         </svg>
       </button>
       <div class="lightbox-image-wrap">
-        <img id="lightbox-img" src="" alt="Скриншот TengeOS">
+        <img id="lightbox-img" alt="Скриншот TengeOS">
       </div>
-      <div class="lightbox-footer" style="justify-content: flex-end;">
+      <div class="lightbox-footer">
         <div class="lightbox-nav-buttons">
           <button id="lightbox-prev" class="lightbox-nav-btn" aria-label="Предыдущий">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -160,7 +162,7 @@
   </div>
 
   <!-- Installation Modal -->
-  <div id="install-modal" class="modal-backdrop" aria-hidden="true">
+  <div id="install-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="install-modal-title" aria-hidden="true">
     <div class="install-modal-content">
       <div class="modal-header">
         <div>

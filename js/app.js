@@ -45,7 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
       features_highlight: "Особенности сборки:",
       no_notes: "Нет особых примечаний",
       no_bugs: "Критических багов не обнаружено",
-      install_guide_title: "Инструкция по установке"
+      no_firmwares: "В этой категории прошивок нет.",
+      install_guide_title: "Инструкция по установке",
+      type_label: "Тип",
+      version_label: "Версия",
+      toast_download: "Переход к загрузке:",
+      toast_copy_fail: "Не удалось скопировать хэш",
+      lightbox_alt: "Скриншот TengeOS"
     },
     en: {
       search_placeholder: "Search firmwares...",
@@ -87,13 +93,19 @@ document.addEventListener('DOMContentLoaded', () => {
       features_highlight: "Build Highlights:",
       no_notes: "No special notes",
       no_bugs: "No critical bugs found",
-      install_guide_title: "Installation Guide"
+      no_firmwares: "No firmwares found in this category.",
+      install_guide_title: "Installation Guide",
+      type_label: "Type",
+      version_label: "Version",
+      toast_download: "Redirecting to download:",
+      toast_copy_fail: "Failed to copy hash",
+      lightbox_alt: "TengeOS screenshot"
     }
   };
 
-  // Language auto-detection & initialization
+  // Language auto-detection & initialization (validate stored value)
   let currentLang = localStorage.getItem('tenge_lang');
-  if (!currentLang) {
+  if (currentLang !== 'ru' && currentLang !== 'en') {
     const sysLang = navigator.language || navigator.userLanguage || 'ru';
     currentLang = sysLang.startsWith('ru') ? 'ru' : 'en';
   }
@@ -109,7 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const globalSearchInput = document.getElementById('global-search');
   const themeToggleBtn = document.getElementById('theme-toggle');
   const langToggleBtn = document.getElementById('lang-toggle');
-  const countAll = document.getElementById('count-all');
   const filterTabsContainer = document.getElementById('firmware-filter-tabs');
 
   // Lightbox Modal Elements
@@ -134,6 +145,52 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeLightboxScreenshots = [];
   let currentScreenshotIndex = 0;
 
+  // Escape data-driven strings before injecting into innerHTML
+  function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  // Clipboard with fallback for non-secure contexts / older browsers
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        return ok;
+      } catch (err2) {
+        return false;
+      }
+    }
+  }
+
+  // Collect every screenshot of a device (banner first) for the lightbox
+  function collectDeviceScreenshots(device) {
+    const shots = [{ url: device.image }];
+    (device.firmwares || []).forEach((fw) => {
+      (fw.screenshots || []).forEach((shot) => shots.push(shot));
+    });
+    return shots;
+  }
+
+  function openScreenshots(shots, index) {
+    if (!shots || !shots.length) return;
+    activeLightboxScreenshots = shots;
+    currentScreenshotIndex = Math.min(Math.max(index || 0, 0), shots.length - 1);
+    openLightbox();
+  }
+
   // Apply Language to Static Elements
   function updateLanguageUI() {
     if (langToggleBtn) {
@@ -151,6 +208,11 @@ document.addEventListener('DOMContentLoaded', () => {
         el.placeholder = TRANSLATIONS[currentLang][key];
       }
     });
+    document.documentElement.lang = currentLang;
+    const kbdHint = document.getElementById('search-shortcut-hint');
+    if (kbdHint) {
+      kbdHint.textContent = navigator.platform && /mac/i.test(navigator.platform) ? '⌘K' : 'Ctrl K';
+    }
   }
 
   langToggleBtn.addEventListener('click', () => {
@@ -165,31 +227,63 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Theme Initialization
-  const savedTheme = localStorage.getItem('tenge_theme') || 'dark-theme';
-  document.body.className = savedTheme;
+  // Theme Initialization (validate stored value, don't wipe other body classes)
+  const savedTheme = localStorage.getItem('tenge_theme');
+  const initialTheme = savedTheme === 'light-theme' || savedTheme === 'dark-theme' ? savedTheme : 'dark-theme';
+  document.body.classList.remove('dark-theme', 'light-theme');
+  document.body.classList.add(initialTheme);
 
   themeToggleBtn.addEventListener('click', () => {
     const isDark = document.body.classList.contains('dark-theme');
     const newTheme = isDark ? 'light-theme' : 'dark-theme';
-    document.body.className = newTheme;
+    document.body.classList.remove('dark-theme', 'light-theme');
+    document.body.classList.add(newTheme);
     localStorage.setItem('tenge_theme', newTheme);
     showToast(isDark ? TRANSLATIONS[currentLang].toast_theme_light : TRANSLATIONS[currentLang].toast_theme_dark, 'info');
   });
 
   // --- Interactive Canvas Background with Floating Particles & Mouse Connection ---
   const canvas = document.getElementById('bg-canvas');
-  if (canvas) {
+  const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (canvas && !prefersReducedMotion) {
     const ctx = canvas.getContext('2d');
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
-
-    window.addEventListener('resize', () => {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    });
+    // Cap DPR for performance; drawing coordinates stay in CSS pixels
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    let width = 0;
+    let height = 0;
+    let particles = [];
+    let rafId = null;
 
     const mouse = { x: null, y: null, radius: 120 };
+
+    function buildParticles() {
+      const particleCount = Math.min(Math.floor((width * height) / 15000), 75);
+      particles = [];
+      for (let i = 0; i < particleCount; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: (Math.random() - 0.5) * 0.8,
+          radius: Math.random() * 1.5 + 1
+        });
+      }
+    }
+
+    function resizeCanvas() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = Math.floor(width * DPR);
+      canvas.height = Math.floor(height * DPR);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      buildParticles();
+    }
+
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(resizeCanvas, 150);
+    });
 
     window.addEventListener('mousemove', (e) => {
       mouse.x = e.clientX;
@@ -200,19 +294,6 @@ document.addEventListener('DOMContentLoaded', () => {
       mouse.x = null;
       mouse.y = null;
     });
-
-    const particleCount = Math.min(Math.floor((width * height) / 15000), 75);
-    const particles = [];
-
-    for (let i = 0; i < particleCount; i++) {
-      particles.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.8,
-        vy: (Math.random() - 0.5) * 0.8,
-        radius: Math.random() * 1.5 + 1
-      });
-    }
 
     function animateParticles() {
       ctx.clearRect(0, 0, width, height);
@@ -268,10 +349,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      requestAnimationFrame(animateParticles);
+      rafId = requestAnimationFrame(animateParticles);
     }
 
-    animateParticles();
+    function startParticles() {
+      if (rafId === null && !document.hidden) {
+        rafId = requestAnimationFrame(animateParticles);
+      }
+    }
+
+    function stopParticles() {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+
+    // Don't burn CPU/GPU in background tabs
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stopParticles();
+      else startParticles();
+    });
+
+    resizeCanvas();
+    startParticles();
+  } else if (canvas) {
+    canvas.style.display = 'none';
   }
 
   // Render Devices Grid (Page 1)
@@ -285,38 +388,38 @@ document.addEventListener('DOMContentLoaded', () => {
       card.setAttribute('data-device-id', device.id);
 
       card.innerHTML = `
-        <div class="device-img-wrap" style="height: 220px;">
-          <img src="${device.image}" alt="${device.name}" loading="lazy">
-          <span class="device-badge-overlay">${device.codename}</span>
+        <div class="device-img-wrap">
+          <img src="${esc(device.image)}" alt="${esc(device.name)}" loading="lazy">
+          <span class="device-badge-overlay">${esc(device.codename)}</span>
         </div>
         <div class="device-content">
           <div class="device-title-row">
-            <h2 class="device-name">${device.name}</h2>
-            <span class="device-status">${device.status[currentLang]}</span>
+            <h2 class="device-name">${esc(device.name)}</h2>
+            <span class="device-status">${esc(device.status[currentLang])}</span>
           </div>
-          <p class="device-tagline">${device.tagline[currentLang]}</p>
-          
+          <p class="device-tagline">${esc(device.tagline[currentLang])}</p>
+
           <div class="specs-mini-list">
             <div class="spec-item">
               <span class="spec-label">${t.specs_soc}</span>
-              <span class="spec-value">${device.specs.soc.split(' ')[0]} ${device.specs.soc.split(' ')[1]}</span>
+              <span class="spec-value">${esc(device.specs.soc)}</span>
             </div>
             <div class="spec-item">
               <span class="spec-label">${t.specs_screen}</span>
-              <span class="spec-value">${device.specs.screen.split(' ')[1]}</span>
+              <span class="spec-value">${esc(device.specs.screen)}</span>
             </div>
             <div class="spec-item">
               <span class="spec-label">${t.specs_ram}</span>
-              <span class="spec-value">${device.specs.ram}</span>
+              <span class="spec-value">${esc(device.specs.ram)}</span>
             </div>
             <div class="spec-item">
               <span class="spec-label">${t.specs_battery}</span>
-              <span class="spec-value">${device.specs.battery}</span>
+              <span class="spec-value">${esc(device.specs.battery)}</span>
             </div>
           </div>
 
           <div class="device-footer">
-            <span class="firmware-count">${device.firmwares.length} ${t.firmware_count_text}</span>
+            <span class="firmware-count">${(device.firmwares || []).length} ${t.firmware_count_text}</span>
             <span class="btn-arrow">
               ${t.btn_open_firmwares}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -348,40 +451,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // Render Hero Banner
     deviceHeroBanner.innerHTML = `
       <div class="banner-left">
-        <h2>${device.name}</h2>
-        <p>${device.tagline[currentLang]}</p>
+        <h2>${esc(device.name)}</h2>
+        <p>${esc(device.tagline[currentLang])}</p>
         <div class="banner-specs-badges">
-          <span class="spec-badge">Codename: ${device.codename}</span>
-          <span class="spec-badge">${device.specs.soc}</span>
-          <span class="spec-badge">${device.specs.battery}</span>
+          <span class="spec-badge">Codename: ${esc(device.codename)}</span>
+          <span class="spec-badge">${esc(device.specs.soc)}</span>
+          <span class="spec-badge">${esc(device.specs.battery)}</span>
         </div>
       </div>
-      <div class="banner-right" id="clickable-banner" title="Banner preview" style="cursor: pointer;">
-        <img src="${device.image}" alt="${device.name} Banner">
+      <div class="banner-right" id="clickable-banner" title="Banner preview">
+        <img src="${esc(device.image)}" alt="${esc(device.name)} Banner">
       </div>
     `;
 
     const clickableBanner = document.getElementById('clickable-banner');
     if (clickableBanner) {
       clickableBanner.addEventListener('click', () => {
-        const firstFw = device.firmwares[0];
-        activeLightboxScreenshots = [
-          { url: device.image },
-          ...(firstFw ? firstFw.screenshots : [])
-        ];
-        currentScreenshotIndex = 0;
-        openLightbox();
+        openScreenshots(collectDeviceScreenshots(device), 0);
       });
     }
 
-    // Filter & count
-    let firmwares = device.firmwares;
-    if (countAll) {
-      countAll.textContent = firmwares.length;
-    }
+    // Filter & count (tabs are generated from actual firmware categories)
+    renderFilterTabs(device);
+    let firmwares = device.firmwares || [];
 
     if (currentFilter !== 'all') {
-      firmwares = firmwares.filter(f => f.category.toLowerCase().includes(currentFilter.toLowerCase()));
+      const needle = currentFilter.toLowerCase();
+      firmwares = firmwares.filter((f) => (f.category || '').toLowerCase().includes(needle));
     }
 
     firmwareListContainer.innerHTML = '';
@@ -389,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (firmwares.length === 0) {
       firmwareListContainer.innerHTML = `
         <div style="text-align: center; padding: 4rem; color: var(--text-secondary);">
-          <p>No firmwares found in this category.</p>
+          <p>${esc(t.no_firmwares)}</p>
         </div>
       `;
       return;
@@ -399,37 +495,40 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = 'firmware-card';
 
-      const screenshotsHtml = fw.screenshots.map((shot, idx) => `
-        <div class="screenshot-thumb" data-fw-id="${fw.id}" data-index="${idx}" title="Screenshot ${idx + 1}">
-          <img src="${shot.url}" alt="Screenshot ${idx + 1}" loading="lazy">
+      const shots = fw.screenshots || [];
+      const screenshotsHtml = shots.map((shot, idx) => `
+        <div class="screenshot-thumb" data-fw-id="${esc(fw.id)}" data-index="${idx}" title="Screenshot ${idx + 1}">
+          <img src="${esc(shot.url)}" alt="Screenshot ${idx + 1}" loading="lazy">
         </div>
       `).join('');
 
-      const changelogHtml = fw.changelog[currentLang].map(item => `<li>${item}</li>`).join('');
-      const notesList = fw.notes[currentLang];
-      const notesHtml = notesList && notesList.length > 0 ? notesList.map(n => `<li>${n}</li>`).join('') : `<li>${t.no_notes}</li>`;
-      
-      const bugsList = fw.bugs[currentLang];
-      const bugsHtml = bugsList && bugsList.length > 0 ? bugsList.map(b => `<li>${b}</li>`).join('') : `<li>${t.no_bugs}</li>`;
+      const changelogList = (fw.changelog && fw.changelog[currentLang]) || [];
+      const changelogHtml = changelogList.map(item => `<li>${esc(item)}</li>`).join('');
+      const notesList = (fw.notes && fw.notes[currentLang]) || [];
+      const notesHtml = notesList.length > 0 ? notesList.map(n => `<li>${esc(n)}</li>`).join('') : `<li>${esc(t.no_notes)}</li>`;
 
-      const downloadsHtml = fw.downloads.map(dl => `
-        <a href="${dl.url}" target="_blank" rel="noopener" class="btn ${dl.primary ? 'btn-primary' : 'btn-secondary'} download-trigger" data-name="${dl.name}">
+      const bugsList = (fw.bugs && fw.bugs[currentLang]) || [];
+      const bugsHtml = bugsList.length > 0 ? bugsList.map(b => `<li>${esc(b)}</li>`).join('') : `<li>${esc(t.no_bugs)}</li>`;
+
+      const shortHash = (fw.sha256 || '').substring(0, 12);
+      const downloadsHtml = (fw.downloads || []).map(dl => `
+        <a href="${esc(dl.url)}" target="_blank" rel="noopener" class="btn ${dl.primary ? 'btn-primary' : 'btn-secondary'} download-trigger" data-name="${esc(dl.name)}">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          ${dl.name}
+          ${esc(dl.name)}
         </a>
       `).join('');
 
       card.innerHTML = `
         <div class="firmware-header-row">
           <div class="firmware-title-group">
-            <h3>${fw.name}</h3>
+            <h3>${esc(fw.name)}</h3>
             <div class="firmware-badges">
-              <span class="fw-badge category">${fw.category}</span>
-              <span class="fw-badge version">${fw.version}</span>
-              <span class="fw-badge status">${fw.status}</span>
+              <span class="fw-badge category">${esc(fw.category)}</span>
+              <span class="fw-badge version">${esc(fw.version)}</span>
+              <span class="fw-badge status">${esc(fw.status)}</span>
             </div>
           </div>
-          <button class="btn btn-primary install-guide-btn" data-fw-id="${fw.id}">
+          <button class="btn btn-primary install-guide-btn" data-fw-id="${esc(fw.id)}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 12 12 12 8"></polyline><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
             ${t.install_guide}
           </button>
@@ -438,59 +537,59 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="firmware-meta-grid">
           <div class="meta-item">
             <span class="meta-label">${t.android_os}</span>
-            <span class="meta-val">${fw.androidVersion}</span>
+            <span class="meta-val">${esc(fw.androidVersion)}</span>
           </div>
           <div class="meta-item">
             <span class="meta-label">${t.security_patch}</span>
-            <span class="meta-val">${fw.securityPatch}</span>
+            <span class="meta-val">${esc(fw.securityPatch)}</span>
           </div>
           <div class="meta-item">
             <span class="meta-label">${t.release_date}</span>
-            <span class="meta-val">${fw.buildDate[currentLang]}</span>
+            <span class="meta-val">${esc(fw.buildDate && fw.buildDate[currentLang])}</span>
           </div>
           <div class="meta-item">
             <span class="meta-label">${t.maintainer}</span>
-            <span class="meta-val">${fw.maintainer}</span>
+            <span class="meta-val">${esc(fw.maintainer)}</span>
           </div>
           <div class="meta-item">
             <span class="meta-label">${t.size}</span>
-            <span class="meta-val">${fw.fileSize}</span>
+            <span class="meta-val">${esc(fw.fileSize)}</span>
           </div>
-          <div class="meta-item" style="cursor: pointer;" title="Copy SHA-256" id="copy-hash-${fw.id}">
+          <div class="meta-item meta-hash" title="Copy SHA-256" id="copy-hash-${esc(fw.id)}">
             <span class="meta-label">SHA-256 Checksum 📋</span>
-            <span class="meta-val mono" style="color: var(--accent);">${fw.sha256.substring(0, 12)}...</span>
+            <span class="meta-val mono">${shortHash ? esc(shortHash) + '...' : '—'}</span>
           </div>
         </div>
 
         <div class="firmware-highlight">
-          <strong>${t.features_highlight}</strong> ${fw.highlight[currentLang]}
+          <strong>${t.features_highlight}</strong> ${esc(fw.highlight && fw.highlight[currentLang])}
         </div>
 
         <div class="info-tabs-container" style="margin-bottom: 1.5rem;">
-          <div class="info-tabs-header" style="display: flex; gap: 0.75rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
-            <button class="info-tab-btn active" data-tab="changelog-${fw.id}" data-color="accent">${t.changelog_tab}</button>
-            <button class="info-tab-btn" data-tab="notes-${fw.id}" data-color="warning">${t.notes_tab}</button>
-            <button class="info-tab-btn" data-tab="bugs-${fw.id}" data-color="danger">${t.bugs_tab}</button>
+          <div class="info-tabs-header">
+            <button class="info-tab-btn active" data-tab="changelog-${esc(fw.id)}" data-color="accent">${t.changelog_tab}</button>
+            <button class="info-tab-btn" data-tab="notes-${esc(fw.id)}" data-color="warning">${t.notes_tab}</button>
+            <button class="info-tab-btn" data-tab="bugs-${esc(fw.id)}" data-color="danger">${t.bugs_tab}</button>
           </div>
 
-          <div class="info-tab-content active" id="changelog-${fw.id}">
+          <div class="info-tab-content active" id="changelog-${esc(fw.id)}">
             <ul class="changelog-list">
               ${changelogHtml}
             </ul>
           </div>
-          <div class="info-tab-content" id="notes-${fw.id}" style="display: none;">
+          <div class="info-tab-content" id="notes-${esc(fw.id)}" style="display: none;">
             <ul class="changelog-list" style="color: var(--warning);">
               ${notesHtml}
             </ul>
           </div>
-          <div class="info-tab-content" id="bugs-${fw.id}" style="display: none;">
+          <div class="info-tab-content" id="bugs-${esc(fw.id)}" style="display: none;">
             <ul class="changelog-list" style="color: #ef4444;">
               ${bugsHtml}
             </ul>
           </div>
         </div>
 
-        ${fw.screenshots && fw.screenshots.length > 0 ? `
+        ${shots.length > 0 ? `
           <div class="screenshots-section">
             <div class="screenshots-title">${t.screenshots_title}</div>
             <div class="screenshots-grid">
@@ -506,47 +605,22 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      // Color-coded tab switching logic
+      // Color-coded tab switching logic (styles live in CSS: .info-tab-btn)
       const tabBtns = card.querySelectorAll('.info-tab-btn');
-      
-      function applyTabStyles(activeBtn) {
-        tabBtns.forEach(b => {
-          b.style.background = 'var(--bg-secondary)';
-          b.style.color = 'var(--text-secondary)';
-          b.style.borderColor = 'var(--border-color)';
-          b.style.boxShadow = 'none';
-        });
+      const TAB_ACTIVE_CLASS = {
+        accent: 'is-active-accent',
+        warning: 'is-active-warning',
+        danger: 'is-active-danger'
+      };
 
-        const colorType = activeBtn.getAttribute('data-color');
-        if (colorType === 'accent') {
-          activeBtn.style.background = '#3b82f6';
-          activeBtn.style.color = '#fff';
-          activeBtn.style.borderColor = '#3b82f6';
-          activeBtn.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
-        } else if (colorType === 'warning') {
-          activeBtn.style.background = '#f59e0b';
-          activeBtn.style.color = '#fff';
-          activeBtn.style.borderColor = '#f59e0b';
-          activeBtn.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.3)';
-        } else if (colorType === 'danger') {
-          activeBtn.style.background = '#ef4444';
-          activeBtn.style.color = '#fff';
-          activeBtn.style.borderColor = '#ef4444';
-          activeBtn.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)';
-        }
+      function applyTabStyles(activeBtn) {
+        tabBtns.forEach((b) => {
+          b.classList.remove('is-active-accent', 'is-active-warning', 'is-active-danger');
+        });
+        activeBtn.classList.add(TAB_ACTIVE_CLASS[activeBtn.getAttribute('data-color')] || 'is-active-accent');
       }
 
       tabBtns.forEach(btn => {
-        btn.style.background = 'var(--bg-secondary)';
-        btn.style.border = '1px solid var(--border-color)';
-        btn.style.color = 'var(--text-secondary)';
-        btn.style.padding = '0.5rem 1.1rem';
-        btn.style.borderRadius = 'var(--radius-full)';
-        btn.style.fontSize = '0.825rem';
-        btn.style.fontWeight = '600';
-        btn.style.cursor = 'pointer';
-        btn.style.transition = 'var(--transition)';
-
         btn.addEventListener('click', () => {
           const targetTabId = btn.getAttribute('data-tab');
           tabBtns.forEach(b => b.classList.remove('active'));
@@ -566,12 +640,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       applyTabStyles(card.querySelector('.info-tab-btn.active'));
 
-      // Copy SHA-256 event listener
-      const copyEl = card.querySelector(`#copy-hash-${fw.id}`);
+      // Copy SHA-256 event listener (with fallback for non-secure contexts)
+      const copyId = 'copy-hash-' + fw.id;
+      const copyEl = card.querySelector('#' + (window.CSS && CSS.escape ? CSS.escape(copyId) : copyId));
       if (copyEl) {
-        copyEl.addEventListener('click', () => {
-          navigator.clipboard.writeText(fw.sha256);
-          showToast(t.toast_copied, 'success');
+        copyEl.addEventListener('click', async () => {
+          const ok = await copyText(fw.sha256 || '');
+          showToast(ok ? t.toast_copied : t.toast_copy_fail, ok ? 'success' : 'info');
         });
       }
 
@@ -580,12 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
       thumbs.forEach(thumb => {
         thumb.addEventListener('click', () => {
           const imgIndex = parseInt(thumb.getAttribute('data-index'), 10);
-          activeLightboxScreenshots = [
-            { url: device.image },
-            ...fw.screenshots
-          ];
-          currentScreenshotIndex = imgIndex + 1;
-          openLightbox();
+          openScreenshots([{ url: device.image }, ...(fw.screenshots || [])], imgIndex + 1);
         });
       });
 
@@ -600,7 +670,7 @@ document.addEventListener('DOMContentLoaded', () => {
       dlBtns.forEach(dlBtn => {
         dlBtn.addEventListener('click', () => {
           const dlName = dlBtn.getAttribute('data-name');
-          showToast(`Redirecting to download: ${dlName}`, 'success');
+          showToast(`${t.toast_download} ${dlName}`, 'success');
         });
       });
 
@@ -612,7 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function handleRoute() {
     const hash = window.location.hash || '#devices';
 
-    if (hash === '#devices' || hash === '') {
+    if (hash === '#devices' || hash === '' || hash === '#') {
       devicesView.classList.add('active');
       firmwaresView.classList.remove('active');
       renderDevices();
@@ -623,7 +693,6 @@ document.addEventListener('DOMContentLoaded', () => {
         devicesView.classList.remove('active');
         firmwaresView.classList.add('active');
         currentFilter = 'all';
-        updateFilterTabsUI();
         renderFirmwares(deviceId);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
@@ -632,27 +701,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Filter tabs click
-  filterTabsContainer.addEventListener('click', (e) => {
-    if (e.target.classList.contains('filter-tab')) {
-      filterTabsContainer.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-      e.target.classList.add('active');
-      currentFilter = e.target.getAttribute('data-filter');
-      if (currentDeviceId) {
-        renderFirmwares(currentDeviceId);
-      }
-    }
-  });
+  // Build filter tabs from actual firmware categories (works for any new category)
+  function renderFilterTabs(device) {
+    if (!filterTabsContainer) return;
+    const allFirmwares = device.firmwares || [];
+    const categories = [...new Set(allFirmwares.map((f) => f.category).filter(Boolean))];
+    const t = TRANSLATIONS[currentLang];
+    filterTabsContainer.innerHTML = '';
 
-  function updateFilterTabsUI() {
-    filterTabsContainer.querySelectorAll('.filter-tab').forEach(t => {
-      if (t.getAttribute('data-filter') === currentFilter) {
-        t.classList.add('active');
-      } else {
-        t.classList.remove('active');
-      }
+    const allBtn = document.createElement('button');
+    allBtn.className = 'filter-tab' + (currentFilter === 'all' ? ' active' : '');
+    allBtn.setAttribute('data-filter', 'all');
+    allBtn.textContent = `${t.all_builds} (${allFirmwares.length})`;
+    filterTabsContainer.appendChild(allBtn);
+
+    categories.forEach((cat) => {
+      const count = allFirmwares.filter((f) => f.category === cat).length;
+      const btn = document.createElement('button');
+      btn.className = 'filter-tab' + (currentFilter === cat ? ' active' : '');
+      btn.setAttribute('data-filter', cat);
+      btn.textContent = `${cat} (${count})`;
+      filterTabsContainer.appendChild(btn);
     });
   }
+
+  // Filter tabs click (delegated; .closest handles clicks on inner spans)
+  filterTabsContainer.addEventListener('click', (e) => {
+    const tab = e.target.closest ? e.target.closest('.filter-tab') : null;
+    if (!tab || !filterTabsContainer.contains(tab)) return;
+    currentFilter = tab.getAttribute('data-filter');
+    if (currentDeviceId) {
+      renderFirmwares(currentDeviceId);
+    }
+  });
 
   backToDevicesBtn.addEventListener('click', () => {
     window.location.hash = '#devices';
@@ -663,17 +744,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!activeLightboxScreenshots.length) return;
     updateLightboxImage();
     lightboxModal.classList.add('open');
+    lightboxModal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
   }
 
   function closeLightbox() {
     lightboxModal.classList.remove('open');
+    lightboxModal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
   }
 
   function updateLightboxImage() {
     const shot = activeLightboxScreenshots[currentScreenshotIndex];
+    if (!shot) return;
     lightboxImg.src = shot.url;
+    const shotTitle = shot.title && (shot.title[currentLang] || shot.title.en || shot.title.ru);
+    lightboxImg.alt = shotTitle || TRANSLATIONS[currentLang].lightbox_alt;
     lightboxCounter.textContent = `${currentScreenshotIndex + 1} / ${activeLightboxScreenshots.length}`;
   }
 
@@ -696,17 +782,17 @@ document.addEventListener('DOMContentLoaded', () => {
   function openInstallModal(fw) {
     const t = TRANSLATIONS[currentLang];
     installModalTitle.textContent = `${t.install_guide}: ${fw.name}`;
-    installModalSubtitle.textContent = `Type: ${fw.type} • Version ${fw.version}`;
+    installModalSubtitle.textContent = `${t.type_label}: ${fw.type} • ${t.version_label} ${fw.version}`;
     
     installModalSteps.innerHTML = '';
     
     const htmlContent = currentLang === 'ru' ? `
-      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.2rem;">
-          <h4 style="color: var(--accent); margin-bottom: 0.75rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+      <div class="install-blocks">
+        <div class="install-block install-block-fastboot">
+          <h4>
             ⚡ FASTBOOT Установка:
           </h4>
-          <ol style="padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.875rem; color: var(--text-primary);">
+          <ol class="install-steps">
             <li>Распакуйте загруженный архиватор с прошивкой на ПК.</li>
             <li>Убедитесь, что телефон подключен к компьютеру в режиме Fastboot (Bootloader).</li>
             <li>Перейдите в распакованную папку с прошивкой (папка ROM).</li>
@@ -716,11 +802,11 @@ document.addEventListener('DOMContentLoaded', () => {
           </ol>
         </div>
 
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.2rem;">
-          <h4 style="color: var(--success); margin-bottom: 0.75rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <div class="install-block install-block-recovery">
+          <h4>
             🔄 RECOVERY Установка:
           </h4>
-          <ol style="padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.875rem; color: var(--text-primary);">
+          <ol class="install-steps">
             <li>Перезагрузите устройство в кастомное рекавери (например, OrangeFox).</li>
             <li>Выберите архив прошивки и сделайте свайп (Swipe to flash ROM).</li>
             <li>После завершения прошивки перезагрузите устройство обратно в рекавери (Reboot to Recovery).</li>
@@ -730,12 +816,12 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
     ` : `
-      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.2rem;">
-          <h4 style="color: var(--accent); margin-bottom: 0.75rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+      <div class="install-blocks">
+        <div class="install-block install-block-fastboot">
+          <h4>
             ⚡ FASTBOOT Installation:
           </h4>
-          <ol style="padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.875rem; color: var(--text-primary);">
+          <ol class="install-steps">
             <li>Extract the downloaded archive on your PC.</li>
             <li>Ensure your phone is connected to PC and in Fastboot mode (bootloader).</li>
             <li>Navigate to the ROM folder.</li>
@@ -745,11 +831,11 @@ document.addEventListener('DOMContentLoaded', () => {
           </ol>
         </div>
 
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.2rem;">
-          <h4 style="color: var(--success); margin-bottom: 0.75rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <div class="install-block install-block-recovery">
+          <h4>
             🔄 RECOVERY Installation:
           </h4>
-          <ol style="padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.875rem; color: var(--text-primary);">
+          <ol class="install-steps">
             <li>Reboot to custom recovery (e.g. OrangeFox).</li>
             <li>Swipe to flash ROM archive.</li>
             <li>Reboot back to recovery.</li>
@@ -762,11 +848,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     installModalSteps.innerHTML = htmlContent;
     installModal.classList.add('open');
+    installModal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
   }
 
   function closeInstallModal() {
     installModal.classList.remove('open');
+    installModal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
   }
 
@@ -786,35 +874,50 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'ArrowLeft') lightboxPrev.click();
       if (e.key === 'ArrowRight') lightboxNext.click();
     }
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    if ((e.metaKey || e.ctrlKey) && e.key && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       globalSearchInput.focus();
     }
   });
 
-  // Toast Notification System
+  // Toast Notification System (capped, XSS-safe via textContent)
   function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    while (container.children.length >= 3) {
+      container.firstChild.remove();
+    }
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.innerHTML = `
-      <span>${type === 'success' ? '✓' : 'ℹ️'}</span>
-      <span>${message}</span>
-    `;
-    document.getElementById('toast-container').appendChild(toast);
+    const icon = document.createElement('span');
+    icon.textContent = type === 'success' ? '✓' : 'ℹ️';
+    const text = document.createElement('span');
+    text.textContent = message;
+    toast.append(icon, text);
+    container.appendChild(toast);
 
     setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateY(15px)';
+      toast.classList.add('is-hiding');
       setTimeout(() => toast.remove(), 300);
     }, 3500);
   }
 
+  // Search matches the query against device metadata (all words must match)
   globalSearchInput.addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase().trim();
-    if (q.length > 1) {
-      if ('poco x6 pro'.includes(q) || 'duchamp'.includes(q) || 'tengeos'.includes(q)) {
-        window.location.hash = '#device/poco-x6-pro';
-      }
+    if (q.length < 2) return;
+    const words = q.split(/\s+/);
+    const match = Object.values(DEVICES_DATA).find((device) => {
+      const haystack = [
+        device.name,
+        device.codename,
+        device.tagline && device.tagline.ru,
+        device.tagline && device.tagline.en,
+        ...((device.firmwares || []).flatMap((fw) => [fw.name, fw.version, fw.category]))
+      ].filter(Boolean).join(' ').toLowerCase();
+      return words.every((word) => haystack.includes(word));
+    });
+    if (match) {
+      window.location.hash = `#device/${match.id}`;
     }
   });
 
