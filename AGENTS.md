@@ -6,7 +6,7 @@ Static firmware-hub site (GitHub Pages). No build, no deps, no tests, no lint.
 - `index.html` — markup shell; views (`#devices-view`, `#firmwares-view`), modals, footer. Scripts loaded in order: `js/data.js` then `js/app.js`.
 - `js/data.js` — single source of truth: `DEVICES_DATA` (device specs, `firmwares[]`, downloads, `sha256`, screenshots).
 - `js/app.js` — SPA render + hash router (`#devices`, `#device/<id>`), `TRANSLATIONS` dict, theme/lang, lightbox, install modal.
-- `css/style.css` — all styles; theme via `body.dark-theme` / `body.light-theme`.
+- `css/style.css` — all styles; theme via `body.dark-theme` / `body.light-theme`. All buttons share one scale (`--btn-height: 38px`, `--btn-icon-size`, `--btn-padding-x`, `--btn-font-size`, `--btn-radius` in `:root`): `.btn`, `.filter-tab`, `.info-tab-btn`, `.back-btn`, `.lang-btn` are text buttons, `.theme-btn` / `.modal-close-btn` / `.lightbox-nav-btn` are icon buttons. Keep hovers flat (bg/border change only, no lifts or glows) — minimalism is intentional.
 - `data/screenshots_<version>/` — `banner.png` (device card + hero) + screenshots referenced by relative path.
 
 ## Run / preview

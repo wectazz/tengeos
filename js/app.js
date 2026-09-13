@@ -209,10 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
     document.documentElement.lang = currentLang;
-    const kbdHint = document.getElementById('search-shortcut-hint');
-    if (kbdHint) {
-      kbdHint.textContent = navigator.platform && /mac/i.test(navigator.platform) ? '⌘K' : 'Ctrl K';
-    }
   }
 
   langToggleBtn.addEventListener('click', () => {
