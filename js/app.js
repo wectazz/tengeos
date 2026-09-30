@@ -249,10 +249,10 @@ document.addEventListener('DOMContentLoaded', () => {
     var useMobile = aspect < 0.8 && window.innerWidth < 900;
     window.initCursorRingField(canvas, useMobile ? {
       density: 300,
-      dotSize: 150,
+      dotSize: 170,
       speed: 5,
-      cameraDistance: 360,
-      ring: { radius: 7, width: 7, push: 40, turbulence: 100 }
+      cameraDistance: 280,
+      ring: { radius: 6, width: 6, push: 40, turbulence: 100 }
     } : {
       density: 300,
       dotSize: 75,
