@@ -238,138 +238,18 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(isDark ? TRANSLATIONS[currentLang].toast_theme_light : TRANSLATIONS[currentLang].toast_theme_dark, 'info');
   });
 
-  // --- Interactive Canvas Background with Floating Particles & Mouse Connection ---
+  // --- Cursor Ring Field background (Originkit vanilla port, WebGL) ---
   const canvas = document.getElementById('bg-canvas');
   const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (canvas && !prefersReducedMotion) {
-    const ctx = canvas.getContext('2d');
-    // Cap DPR for performance; drawing coordinates stay in CSS pixels
-    const DPR = Math.min(window.devicePixelRatio || 1, 2);
-    let width = 0;
-    let height = 0;
-    let particles = [];
-    let rafId = null;
-
-    const mouse = { x: null, y: null, radius: 120 };
-
-    function buildParticles() {
-      const particleCount = Math.min(Math.floor((width * height) / 15000), 75);
-      particles = [];
-      for (let i = 0; i < particleCount; i++) {
-        particles.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 0.8,
-          vy: (Math.random() - 0.5) * 0.8,
-          radius: Math.random() * 1.5 + 1
-        });
-      }
-    }
-
-    function resizeCanvas() {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = Math.floor(width * DPR);
-      canvas.height = Math.floor(height * DPR);
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      buildParticles();
-    }
-
-    let resizeTimer = null;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(resizeCanvas, 150);
+  if (canvas && !prefersReducedMotion && typeof window.initCursorRingField === 'function') {
+    window.initCursorRingField(canvas, {
+      density: 300,
+      dotSize: 120,
+      speed: 6,
+      cameraDistance: 160,
+      ring: { radius: 12, width: 9, push: 50, turbulence: 100 }
     });
-
-    window.addEventListener('mousemove', (e) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-    });
-
-    window.addEventListener('mouseleave', () => {
-      mouse.x = null;
-      mouse.y = null;
-    });
-
-    function animateParticles() {
-      ctx.clearRect(0, 0, width, height);
-      const isLight = document.body.classList.contains('light-theme');
-      const dotColor = isLight ? 'rgba(37, 99, 235, 0.4)' : 'rgba(59, 130, 246, 0.5)';
-      const lineColor = isLight ? 'rgba(37, 99, 235, ' : 'rgba(59, 130, 246, ';
-
-      particles.forEach((p, index) => {
-        p.x += p.vx;
-        p.y += p.vy;
-
-        if (p.x < 0 || p.x > width) p.vx *= -1;
-        if (p.y < 0 || p.y > height) p.vy *= -1;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = dotColor;
-        ctx.fill();
-
-        for (let j = index + 1; j < particles.length; j++) {
-          const p2 = particles[j];
-          const dx = p.x - p2.x;
-          const dy = p.y - p2.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          if (dist < 110) {
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = lineColor + (1 - dist / 110) * 0.2 + ')';
-            ctx.lineWidth = 0.6;
-            ctx.stroke();
-          }
-        }
-
-        if (mouse.x !== null && mouse.y !== null) {
-          const mdx = p.x - mouse.x;
-          const mdy = p.y - mouse.y;
-          const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
-
-          if (mdist < mouse.radius) {
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(mouse.x, mouse.y);
-            ctx.strokeStyle = lineColor + (1 - mdist / mouse.radius) * 0.4 + ')';
-            ctx.lineWidth = 0.8;
-            ctx.stroke();
-
-            const angle = Math.atan2(mdy, mdx);
-            p.x += Math.cos(angle) * 0.5;
-            p.y += Math.sin(angle) * 0.5;
-          }
-        }
-      });
-
-      rafId = requestAnimationFrame(animateParticles);
-    }
-
-    function startParticles() {
-      if (rafId === null && !document.hidden) {
-        rafId = requestAnimationFrame(animateParticles);
-      }
-    }
-
-    function stopParticles() {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-    }
-
-    // Don't burn CPU/GPU in background tabs
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) stopParticles();
-      else startParticles();
-    });
-
-    resizeCanvas();
-    startParticles();
-  } else if (canvas) {
+  } else if (canvas && prefersReducedMotion) {
     canvas.style.display = 'none';
   }
 

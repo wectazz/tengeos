@@ -104,7 +104,7 @@ body {
   background: var(--accent);
 }
 
-/* Interactive Canvas Background */
+/* Cursor Ring Field background (Originkit WebGL, transparent over page bg) */
 .bg-canvas {
   position: fixed;
   top: 0;
@@ -113,6 +113,10 @@ body {
   height: 100vh;
   z-index: 0;
   pointer-events: none;
+}
+
+body.light-theme .bg-canvas {
+  opacity: 0.75;
 }
 
 /* Background Glow */

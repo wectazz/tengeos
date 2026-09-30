@@ -3,9 +3,10 @@
 Static firmware-hub site (GitHub Pages). No build, no deps, no tests, no lint.
 
 ## Structure
-- `index.html` — markup shell; views (`#devices-view`, `#firmwares-view`), modals, footer. Scripts loaded in order: `js/data.js` then `js/app.js`.
+- `index.html` — markup shell; views (`#devices-view`, `#firmwares-view`), modals, footer. Scripts loaded in order: `js/data.js`, `js/cursor-ring-field.js`, then `js/app.js`.
 - `js/data.js` — single source of truth: `DEVICES_DATA` (device specs, `firmwares[]`, downloads, `sha256`, screenshots).
 - `js/app.js` — SPA render + hash router (`#devices`, `#device/<id>`), `TRANSLATIONS` dict, theme/lang, lightbox, install modal.
+- `js/cursor-ring-field.js` — Originkit Cursor Ring Field vanilla port (WebGL, no deps). Exposes `window.initCursorRingField(canvas, options)`; `app.js` calls it for `#bg-canvas` with preset density 300 / dot 120 / speed 6 / cam 160 / ring 12-9-50.
 - `css/style.css` — all styles; theme via `body.dark-theme` / `body.light-theme`. All buttons share one scale (`--btn-height: 38px`, `--btn-icon-size`, `--btn-padding-x`, `--btn-font-size`, `--btn-radius` in `:root`): `.btn`, `.filter-tab`, `.info-tab-btn`, `.back-btn`, `.lang-btn` are text buttons, `.theme-btn` / `.modal-close-btn` / `.lightbox-nav-btn` are icon buttons. Keep hovers flat (bg/border change only, no lifts or glows) — minimalism is intentional.
 - `data/screenshots_<version>/` — `banner.png` (device card + hero) + screenshots referenced by relative path.
 
