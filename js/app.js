@@ -242,15 +242,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('bg-canvas');
   const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (canvas && !prefersReducedMotion && typeof window.initCursorRingField === 'function') {
-    // Mobile portrait shows a zoomed-in slice of the field (aspect compensation),
-    // so it gets bigger dots + zoomed-out camera; desktop gets smaller dots + tighter ring.
-    var isCoarse = window.matchMedia && (window.matchMedia('(max-width: 768px)').matches || window.matchMedia('(pointer: coarse)').matches);
-    window.initCursorRingField(canvas, isCoarse ? {
-      density: 240,
-      dotSize: 170,
+    // Portrait phones show a zoomed-in slice of the field (aspect compensation),
+    // so they get a zoomed-out camera + denser field to fit the pattern on screen.
+    // Desktop keeps smaller dots + tighter ring.
+    var aspect = window.innerWidth / Math.max(window.innerHeight, 1);
+    var useMobile = aspect < 0.8 && window.innerWidth < 900;
+    window.initCursorRingField(canvas, useMobile ? {
+      density: 300,
+      dotSize: 130,
       speed: 5,
-      cameraDistance: 240,
-      ring: { radius: 14, width: 10, push: 40, turbulence: 100 }
+      cameraDistance: 560,
+      ring: { radius: 10, width: 8, push: 40, turbulence: 100 }
     } : {
       density: 300,
       dotSize: 75,
