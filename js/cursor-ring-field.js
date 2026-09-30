@@ -742,7 +742,7 @@
       gl.uniform1f(renderProg.u.uProjF, projF);
       gl.uniform1f(renderProg.u.uAspect, aspect);
       gl.uniform1f(renderProg.u.uCamDist, L.camDist);
-      gl.uniform1f(renderProg.u.uPointScale, (cssW / 2000) * L.dotSize * dpr * 0.5);
+      gl.uniform1f(renderProg.u.uPointScale, (Math.max(cssW, 1000) / 2000) * L.dotSize * dpr * 0.5);
       gl.uniform3fv(renderProg.u['uColors[0]'], L.colors);
       gl.uniform1i(renderProg.u.uColorCount, L.colorCount);
       gl.uniform2f(renderProg.u.uRingPos, ringPos.x, ringPos.y);

@@ -242,12 +242,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('bg-canvas');
   const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (canvas && !prefersReducedMotion && typeof window.initCursorRingField === 'function') {
-    window.initCursorRingField(canvas, {
+    // Mobile portrait shows a zoomed-in slice of the field (aspect compensation),
+    // so it gets bigger dots + zoomed-out camera; desktop gets smaller dots + tighter ring.
+    var isCoarse = window.matchMedia && (window.matchMedia('(max-width: 768px)').matches || window.matchMedia('(pointer: coarse)').matches);
+    window.initCursorRingField(canvas, isCoarse ? {
+      density: 240,
+      dotSize: 170,
+      speed: 5,
+      cameraDistance: 240,
+      ring: { radius: 14, width: 10, push: 40, turbulence: 100 }
+    } : {
       density: 300,
-      dotSize: 120,
+      dotSize: 75,
       speed: 6,
-      cameraDistance: 160,
-      ring: { radius: 12, width: 9, push: 50, turbulence: 100 }
+      cameraDistance: 170,
+      ring: { radius: 10, width: 8, push: 35, turbulence: 90 }
     });
   } else if (canvas && prefersReducedMotion) {
     canvas.style.display = 'none';
